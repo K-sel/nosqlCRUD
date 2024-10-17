@@ -14,7 +14,7 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
-    "event": "^1.0.0",
+    "events": "^3.3.0",
     "pinia": "^2.1.7",
     "pouchdb": "^9.0.0",
     "vue": "^3.4.29",

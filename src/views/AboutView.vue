@@ -64,7 +64,7 @@ export default {
     },
 
     initDatabase() {
-      const db = new PouchDB('http://admin:admin@localhost:5984/post')
+      const db = new PouchDB('http://admin:admin@localhost:5984/database')
       if (db) {
         console.log("Connected to collection 'post'")
       } else {
@@ -81,6 +81,7 @@ export default {
   <ul>
     <li v-for="post in postsData" :key="post._id">
       <div class="ucfirst">
+        {{ post }}
         {{ post.doc.post_name
         }}<em style="font-size: x-small" v-if="post.doc.attributes?.creation_date">
           - {{ post.doc.attributes?.creation_date }}
