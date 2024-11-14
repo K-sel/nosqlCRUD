@@ -77,16 +77,17 @@ export default {
 </script>
 
 <template>
-  <h1>Nombre de post: {{ postsData.length }}</h1>
-  <ul>
-    <li v-for="post in postsData" :key="post._id">
-      <div class="ucfirst">
-        {{ post }}
-        {{ post.doc.post_name
-        }}<em style="font-size: x-small" v-if="post.doc.attributes?.creation_date">
-          - {{ post.doc.attributes?.creation_date }}
-        </em>
-      </div>
-    </li>
-  </ul>
+  <div>
+    <h1>Nombre de post: {{ postsData.length }}</h1>
+    <ul>
+      <li v-for="post in postsData" :key="post._id">
+        <div class="ucfirst">
+          {{ post.doc.post_name
+          }}<em style="font-size: x-small" v-if="post.doc.attributes?.creation_date">
+            - {{ post.doc.attributes?.creation_date }}
+          </em>
+        </div>
+      </li>
+    </ul>
+  </div>
 </template>
