@@ -5,15 +5,13 @@ import PouchDB from 'pouchdb'
 declare interface Post {
   _id: string
   _rev?: string
-  doc: PostData
-}
-
-declare interface PostData {
-  post_name: string
-  post_content: string
-  attributes: {
-    creation_date: string
-    modified: boolean
+  doc: {
+    post_name: string
+    post_content: string
+    attributes: {
+      creation_date: string
+      modified: boolean
+    }
   }
 }
 
@@ -111,7 +109,7 @@ export default {
             function (result: any) {
               self.log('fetchData success', result)
               self.postsData = result.rows
-            }.bind(this)
+            }
           )
           .catch(function (error: any) {
             self.log('fetchData error', error)
