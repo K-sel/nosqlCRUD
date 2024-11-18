@@ -5,13 +5,15 @@ import PouchDB from 'pouchdb'
 declare interface Post {
   _id: string
   _rev?: string
-  doc: {
-    post_name: string
-    post_content: string
-    attributes: {
-      creation_date: string
-      modified: string
-    }
+  doc: PostData
+}
+
+declare interface PostData {
+  post_name: string
+  post_content: string
+  attributes: {
+    creation_date: string
+    modified: boolean
   }
 }
 
@@ -35,19 +37,19 @@ export default {
         post_name: 'Post 1',
         post_content: 'Contenu du post 1',
         attributes: {
-          creation_date: '2021-09-01',
-          modified: 'not yet'
+          creation_date: new Date().toISOString(),
+          modified: false
         }
       }
     })
     this.updateData({
       _id: '1',
       doc: {
-        post_name: 'Post 1',
+        post_name: 'Post 1 Modified',
         post_content: 'Contenu du post 1',
         attributes: {
           creation_date: '2021-09-01',
-          modified: 'yes'
+          modified: true
         }
       }
     })
@@ -76,7 +78,7 @@ export default {
       }
     },
 
-    async deleteData(document: Post) {
+    async deleteData(id: string) {
       this.log('Call deleteData')
       const db = this.storage
 
@@ -88,7 +90,7 @@ export default {
 
       try {
         // Récupérer le document existant pour obtenir son _rev
-        const existingDoc = await db.get(document._id)
+        const existingDoc = await db.get(id)
         await db.remove(existingDoc._id, existingDoc._rev)
         this.log('deleteData success')
       } catch (error) {
@@ -98,14 +100,13 @@ export default {
 
     fetchData() {
       this.log('Call fetchData')
-      const storage = ref(this.storage)
+      const db = ref(this.storage).value
       const self = this
-      if (storage.value) {
-        storage.value
-          .allDocs({
-            include_docs: true,
-            attachments: true
-          })
+      if (db) {
+        db.allDocs({
+          include_docs: true,
+          attachments: true
+        })
           .then(
             function (result: any) {
               self.log('fetchData success', result)
@@ -120,14 +121,13 @@ export default {
 
     createData(document: Post) {
       this.log('Call createData', document)
-      const db = ref(this.storage)
+      const db = ref(this.storage).value
       try {
-        if (document) {
-          db.value?.post(document)
-        }
+        db?.post(document)
+        this.log('createData success')
       } catch (error) {
         this.log('createData error', error)
-        throw new Error('createData error')
+        //throw new Error('createData error')
       }
     },
 
@@ -163,5 +163,6 @@ export default {
         </div>
       </li>
     </ul>
+    <button role="button" type="button" @click="deleteData('1')">Delete</button>
   </div>
 </template>
