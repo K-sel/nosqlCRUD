@@ -18,6 +18,7 @@ declare interface Post {
 export default {
   data() {
     return {
+      step: 0,
       total: 0,
       postsData: [] as Post[],
       document: null as Post | null,
@@ -54,11 +55,12 @@ export default {
 
   methods: {
     async updateData(document: Post) {
+      this.log('Call updateData')
       const db = this.storage
 
       // Vérifier si le stockage est bien défini
       if (!db) {
-        console.error("Le stockage n'est pas défini.")
+        this.log("Le stockage n'est pas défini.")
         return
       }
 
@@ -66,22 +68,21 @@ export default {
         // Récupérer le document existant pour obtenir son _rev (version)
         const existingDoc = await db.get(document._id)
         document._rev = existingDoc._rev // Assigner _rev pour la mise à jour
-
         // Mettre à jour le document
         await db.put(document)
-        console.log('Mise à jour réussie')
+        this.log('updateData success')
       } catch (error) {
-        console.error('Erreur lors de la mise à jour', error)
+        this.log('updateData error', error)
       }
     },
 
     async deleteData(document: Post) {
-      console.log('entrée dans la méthode delete')
+      this.log('Call deleteData')
       const db = this.storage
 
       // Vérifier si le stockage est bien défini
       if (!db) {
-        console.error("Le stockage n'est pas défini.")
+        this.log("Le stockage n'est pas défini.")
         return
       }
 
@@ -89,14 +90,14 @@ export default {
         // Récupérer le document existant pour obtenir son _rev
         const existingDoc = await db.get(document._id)
         await db.remove(existingDoc._id, existingDoc._rev)
-        console.log('Suppression réussie')
+        this.log('deleteData success')
       } catch (error) {
-        console.log('catch delete')
-        console.error('Erreur lors de la suppression', error)
+        this.log('deleteData error', error)
       }
     },
 
     fetchData() {
+      this.log('Call fetchData')
       const storage = ref(this.storage)
       const self = this
       if (storage.value) {
@@ -107,35 +108,43 @@ export default {
           })
           .then(
             function (result: any) {
-              console.log('fetchData success', result)
+              self.log('fetchData success', result)
               self.postsData = result.rows
             }.bind(this)
           )
           .catch(function (error: any) {
-            console.log('fetchData error', error)
+            self.log('fetchData error', error)
           })
       }
     },
 
     createData(document: Post) {
+      this.log('Call createData', document)
       const db = ref(this.storage)
       try {
         if (document) {
           db.value?.post(document)
         }
-      } catch (e) {
-        throw new Error('Impossible de modifer le document')
+      } catch (error) {
+        this.log('createData error', error)
+        throw new Error('createData error')
       }
     },
 
     initDatabase() {
+      this.log('Call initDatabase')
       const db = new PouchDB('http://admin:admin@localhost:5984/database')
       if (db) {
-        console.log("Connected to collection 'post'")
+        this.log('Connected to collection ', db.name)
       } else {
-        console.warn('Something went wrong')
+        this.log('Something went wrong')
       }
       this.storage = db
+    },
+
+    log(...o: any) {
+      this.step++
+      console.log('Step', this.step, ':', ...o)
     }
   }
 }
