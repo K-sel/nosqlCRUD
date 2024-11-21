@@ -22,35 +22,16 @@ export default {
       total: 0,
       postsData: [] as Post[],
       document: null as Post | null,
-      storage: null as PouchDB.Database | null
+      storage: null as PouchDB.Database | null,
+      remoteDB: null as PouchDB.Database | null
     }
   },
 
   mounted() {
     this.initDatabase()
+    this.initRemoteDatabase()
+    this.updateLocalDatabase()
     this.fetchData()
-    this.createData({
-      _id: '1',
-      doc: {
-        post_name: 'Post 1',
-        post_content: 'Contenu du post 1',
-        attributes: {
-          creation_date: new Date().toISOString(),
-          modified: false
-        }
-      }
-    })
-    this.updateData({
-      _id: '1',
-      doc: {
-        post_name: 'Post 1 Modified',
-        post_content: 'Contenu du post 1',
-        attributes: {
-          creation_date: '2021-09-01',
-          modified: true
-        }
-      }
-    })
   },
 
   methods: {
@@ -105,12 +86,29 @@ export default {
           include_docs: true,
           attachments: true
         })
-          .then(
-            function (result: any) {
-              self.log('fetchData success', result)
-              self.postsData = result.rows
-            }
-          )
+          .then(function (result: any) {
+            self.log('fetchData success', result)
+            self.postsData = result.rows
+          })
+          .catch(function (error: any) {
+            self.log('fetchData error', error)
+          })
+      }
+    },
+
+    fetchDistantData() {
+      this.log('Call fetchData')
+      const db = ref(this.remoteDB).value
+      const self = this
+      if (db) {
+        db.allDocs({
+          include_docs: true,
+          attachments: true
+        })
+          .then(function (result: any) {
+            self.log('fetchData success', result)
+            self.postsData = result.rows
+          })
           .catch(function (error: any) {
             self.log('fetchData error', error)
           })
@@ -140,9 +138,54 @@ export default {
       this.storage = db
     },
 
+    initRemoteDatabase() {
+      this.log('Call initDatabase')
+      const remoteDB = new PouchDB('http://admin:admin@localhost:5984/post')
+      if (remoteDB) {
+        this.log('Connected to collection ', remoteDB.name)
+      } else {
+        this.log('Something went wrong')
+      }
+      this.remoteDB = remoteDB
+    },
+
     log(...o: any) {
       this.step++
       console.log('Step', this.step, ':', ...o)
+    },
+
+    updateLocalDatabase() {
+      const db = ref(this.storage).value
+      if (db) {
+        db.replicate.from
+          .bind(this)(this.remoteDB!)
+          .on('complete', () => {
+            console.log('on replicate complete')
+            this.fetchData()
+          })
+          .on('error', function (error) {
+            console.log('error', error)
+          })
+      }
+    },
+
+    updateDistantDatabase() {
+      const remotDb = ref(this.remoteDB).value
+      if (remotDb) {
+        remotDb.replicate.from
+          .bind(this)(this.storage!)
+          .on('complete', () => {
+            console.log('on replicate complete')
+            this.fetchData()
+          })
+          .on('error', function (error: any) {
+            console.log('error', error)
+          })
+      }
+    },
+
+    watchRemoteDatabase() {
+      this.fetchDistantData()
     }
   }
 }
@@ -153,14 +196,8 @@ export default {
     <h1>Nombre de post: {{ postsData.length }}</h1>
     <ul>
       <li v-for="post in postsData" :key="post._id">
-        <div class="ucfirst">
-          {{ post.doc.post_name
-          }}<em style="font-size: x-small" v-if="post.doc.attributes?.creation_date">
-            - {{ post.doc.attributes?.creation_date }}
-          </em>
-        </div>
+        <div class="ucfirst">{{ post.doc.post_name }} - {{ post.doc.post_content }}</div>
       </li>
     </ul>
-    <button role="button" type="button" @click="deleteData('1')">Delete</button>
   </div>
 </template>
