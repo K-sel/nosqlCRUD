@@ -1,7 +1,9 @@
 <script lang="ts">
 import { ref } from 'vue'
 import PouchDB from 'pouchdb'
-import 'pouchdb-find'
+import PouchFind from 'pouchdb-find'
+
+PouchDB.plugin(PouchFind)
 
 declare interface Post {
   id: string
@@ -58,25 +60,37 @@ export default {
       }
     },
 
-    // searchPosts() {
-    //   this.storage
-    //     ?.find({
-    //       selector: {
-    //         $or: [
-    //           { post_name: { $regex: this.searchQuery, $options: 'i' } },
-    //           { post_content: { $regex: this.searchQuery, $options: 'i' } }
-    //         ]
-    //       }
-    //     })
-    //     .then((result) => {
-    //       this.postsData as Post [] = result.docs
-    //       this.log('Search result', result)
-    //       this.fetchData()
-    //     })
-    //     .catch((error) => {
-    //       console.error('Error searching posts', error)
-    //     })
-    // },
+    async searchPosts() {
+      this.log('Début searchPosts avec query:', this.searchQuery)
+
+      if (!this.storage || !this.searchQuery) {
+        this.fetchData()
+        return
+      }
+      const queryRegex = `(?i)^${this.searchQuery}` // Expression régulière insensible à la casse
+
+      try {
+        this.log("Vérification de l'index...")
+        this.log('Exécution de la recherche...')
+        const result = await this.storage.find({
+          selector: {
+            $or: [
+              {
+                'doc.post_name': {
+                  $regex: queryRegex
+                }
+              }
+            ]
+          }
+        })
+
+        this.log('Résultat brut de find:', result)
+        this.postsData = result.docs
+      } catch (error) {
+        console.error('Erreur pendant la recherche:', error)
+        this.fetchData()
+      }
+    },
 
     handleSubmit() {
       const generateId = (): string => {
@@ -84,8 +98,8 @@ export default {
       }
 
       const newPost: Post = {
-        id: generateId(),
         doc: {
+          id: generateId(),
           post_name: this.postName,
           post_content: this.postContent,
           attributes: {
@@ -120,6 +134,7 @@ export default {
         this.log('updateData error', error)
       }
     },
+
     modifyDocument(document: Post) {
       this.log('Call modifyDocument', document)
       const newName = prompt('Modifier le nom du post:', document.doc.post_name)
@@ -168,48 +183,62 @@ export default {
       this.log('Call fetchData')
       const db = ref(this.storage).value
       const self = this
+
       if (db) {
         db.allDocs({
           include_docs: true,
           attachments: true
         })
           .then(function (result: any) {
-            self.log('fetchData success', result)
-            self.postsData = result.rows
+            self.log('Structure complète allDocs:', result)
+            const filteredRows = result.rows.filter((row) => !row.id.startsWith('_design/'))
+            self.log('Documents filtrés (sans index):', filteredRows)
+            self.log('fetchData success', filteredRows)
+            self.postsData = filteredRows
           })
           .catch(function (error: any) {
             self.log('fetchData error', error)
           })
       }
     },
-
     fetchDistantData() {
-      this.log('Call fetchData')
+      this.log('Call fetchDistantData')
       const db = ref(this.remoteDB).value
       const self = this
+
       if (db) {
         db.allDocs({
           include_docs: true,
           attachments: true
         })
           .then(function (result: any) {
-            self.log('fetchData success', result)
-            self.postsData = result.rows
+            self.log('Structure distante:', result)
+            const filteredRows = result.rows.filter((row) => !row.id.startsWith('_design/'))
+            self.log('Documents filtrés (sans index):', filteredRows)
+            self.log('fetchDistantData success', filteredRows)
+            self.postsData = filteredRows
           })
           .catch(function (error: any) {
-            self.log('fetchData error', error)
+            self.log('fetchDistantData error', error)
           })
       }
     },
-
     initDatabase() {
       this.log('Call initDatabase')
       const db = new PouchDB('http://admin:admin@localhost:5984/database')
       if (db) {
         this.log('Connected to collection ', db.name)
-        // db.createIndex({
-        //   index: { fields: ['post_name', 'post_content'] }
-        // })
+        db.createIndex({
+          index: {
+            fields: ['post_name']
+          }
+        })
+          .then(() => {
+            this.log('Index créé avec succès')
+          })
+          .catch((error) => {
+            console.error('Erreur création index:', error)
+          })
       } else {
         this.log('Something went wrong')
       }
@@ -218,7 +247,7 @@ export default {
 
     initRemoteDatabase() {
       this.log('Call initDatabase')
-      const remoteDB = new PouchDB('http://admin:admin@localhost:5984/post')
+      const remoteDB = new PouchDB('http://admin:admin@localhost:5984/database')
       if (remoteDB) {
         this.log('Connected to collection ', remoteDB.name)
       } else {
@@ -343,9 +372,13 @@ export default {
         <div class="posts-list" v-if="postsData.length > 0">
           <h3>Posts existants</h3>
           <div v-for="post in postsData" :key="post.id" class="post-item">
+            <!-- Debug info -->
             <div class="post-content">
-              <h4>{{ post.doc.doc.post_name }}</h4>
-              <p>{{ post.doc.doc.post_content }}</p>
+              <!-- Optional chaining pour éviter les erreurs -->
+              <h4>{{ post?.doc?.post_name || post?.doc?.doc?.post_name || 'Sans titre' }}</h4>
+              <p>
+                {{ post?.doc?.post_content || post?.doc?.doc?.post_content || 'Pas de contenu' }}
+              </p>
             </div>
             <div class="post-actions">
               <button @click="deleteData(post.id)" class="delete-button">Supprimer</button>
