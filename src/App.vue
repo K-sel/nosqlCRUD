@@ -119,8 +119,8 @@ export default {
         this.log('updateData error', error)
       }
     },
-    editPost(document: Post) {
-      this.log('Call editPost', document)
+    modifyDocument(document: Post) {
+      this.log('Call modifyDocument', document)
       const newName = prompt('Modifier le nom du post:', document.doc.post_name)
       const newContent = prompt('Modifier le contenu du post:', document.doc.post_content)
       if (newContent !== null) {
@@ -348,7 +348,7 @@ export default {
             </div>
             <div class="post-actions">
               <button @click="deleteData(post.id)" class="delete-button">Supprimer</button>
-              <button @click="editPost(post)" class="modify-button">Modifier</button>
+              <button @click="modifyDocument(post)" class="modify-button">Modifier</button>
             </div>
           </div>
         </div>
