@@ -17,6 +17,7 @@ declare interface Post {
       modified: boolean
       modified_date?: string
     }
+    media?: { name: string; type: string; data: string }[]
   }
 }
 
@@ -36,7 +37,9 @@ export default {
         creation_date: '',
         modified: false,
         modified_date: ''
-      }
+      },
+      mediaFiles: [] as File[],
+      showAttachmentFields: {} as Record<string, boolean>
     }
   },
 
@@ -49,6 +52,94 @@ export default {
   },
 
   methods: {
+    toggleAttachmentFields(postId: string) {
+      if (!this.showAttachmentFields[postId]) {
+        this.showAttachmentFields[postId] = true // Ajouter la clé si elle n'existe pas
+      } else {
+        this.showAttachmentFields[postId] = !this.showAttachmentFields[postId] // Inverser la valeur
+      }
+    },
+
+    generateDemoData() {
+      const demoPosts = Array.from({ length: 20 }, (_, i) => ({
+        id: `${Date.now()}_${i}`,
+        doc: {
+          post_name: `Demo Post ${i}`,
+          post_content: `This is the content for demo post ${i}.`,
+          attributes: {
+            creation_date: new Date().toISOString(),
+            modified: false
+          }
+        }
+      }))
+      demoPosts.forEach((post) => this.createData(post))
+    },
+
+    createIndex() {
+      const db = this.storage
+      if (db) {
+        db.createIndex({
+          index: { fields: ['doc.post_name'] }
+        })
+          .then(() => {
+            console.log('Index on post_name created successfully')
+          })
+          .catch((err) => {
+            console.error('Error creating index:', err)
+          })
+      }
+    },
+
+    async addMediaToDocument(postId: string, files: File[]) {
+      const db = this.storage
+      if (!db) return
+
+      try {
+        const doc = await db.get(postId)
+        doc.media = doc.media || []
+        for (const file of files) {
+          const reader = new FileReader()
+          reader.onload = async (e) => {
+            doc.media.push({
+              name: file.name,
+              type: file.type,
+              data: e.target?.result as string
+            })
+            await db.put(doc)
+            console.log(`Media added to document ${postId}`)
+          }
+          reader.readAsDataURL(file)
+        }
+      } catch (err) {
+        console.error('Error adding media:', err)
+      }
+    },
+
+    async removeMediaFromDocument(postId: string, mediaName: string) {
+      const db = this.storage
+      if (!db) return
+
+      try {
+        const doc = await db.get(postId)
+        doc.media = doc.media?.filter((m) => m.name !== mediaName)
+        await db.put(doc)
+        console.log(`Media removed from document ${postId}`)
+      } catch (err) {
+        console.error('Error removing media:', err)
+      }
+    },
+
+    handleMediaUpload(event: Event) {
+      const files = (event.target as HTMLInputElement).files
+      if (files) this.mediaFiles = Array.from(files)
+    },
+
+    handleMediaSubmit(postId: string) {
+      if (this.mediaFiles.length > 0) {
+        this.addMediaToDocument(postId, this.mediaFiles)
+        this.mediaFiles = []
+      }
+    },
     createData(document: Post) {
       this.log('Call createData', document)
       const db = ref(this.storage).value
@@ -137,14 +228,43 @@ export default {
 
     modifyDocument(document: Post) {
       this.log('Call modifyDocument', document)
-      const newName = prompt('Modifier le nom du post:', document.doc.post_name)
-      const newContent = prompt('Modifier le contenu du post:', document.doc.post_content)
-      if (newContent !== null) {
-        document.doc.doc.post_name = newName
-        document.doc.doc.post_content = newContent
+
+      // Demander les nouvelles valeurs
+      const newName = prompt(
+        "Modifier le nom du post (laissez vide pour conserver l'ancien nom) :",
+        document.doc.doc.post_name
+      )
+      const newContent = prompt(
+        "Modifier le contenu du post (laissez vide pour conserver l'ancien contenu) :",
+        document.doc.doc.post_content
+      )
+
+      // Vérifier si aucune modification n'a été apportée
+      if (newName === '' && newContent === '') {
+        alert('Modification annulée, aucune donnée saisie.')
+        return
+      }
+
+      // Mettre à jour uniquement si des changements ont été effectués
+      const hasChanged =
+        (newName && newName !== document.doc.doc.post_name) ||
+        (newContent && newContent !== document.doc.doc.post_content)
+      if (hasChanged) {
+        if (newName) {
+          document.doc.doc.post_name = newName
+        }
+        if (newContent) {
+          document.doc.doc.post_content = newContent
+        }
+
+        // Marquer le document comme modifié
         document.doc.doc.attributes.modified = true
         document.doc.doc.attributes.modified_date = new Date().toISOString()
+
+        // Appeler la mise à jour des données
         this.updateData(document)
+      } else {
+        alert('Modification annulée, aucune donnée modifiée.')
       }
     },
 
@@ -357,7 +477,6 @@ export default {
 <template>
   <div class="app-container">
     <div class="content-wrapper">
-      <!-- Colonne de gauche: Posts et recherche -->
       <div class="left-column">
         <div class="search-section">
           <input
@@ -372,24 +491,44 @@ export default {
         <div class="posts-list" v-if="postsData.length > 0">
           <h3>Posts existants</h3>
           <div v-for="post in postsData" :key="post.id" class="post-item">
-            <!-- Debug info -->
             <div class="post-content">
-              <!-- Optional chaining pour éviter les erreurs -->
               <h4>{{ post?.doc?.post_name || post?.doc?.doc?.post_name || 'Sans titre' }}</h4>
               <p>
                 {{ post?.doc?.post_content || post?.doc?.doc?.post_content || 'Pas de contenu' }}
               </p>
+              <div v-if="post.doc.media">
+                <h5>Médias associés :</h5>
+                <ul>
+                  <li v-for="media in post.doc.media" :key="media.name">
+                    {{ media.name }}
+                    <button
+                      @click="removeMediaFromDocument(post.id, media.name)"
+                      class="delete-button"
+                    >
+                      Supprimer
+                    </button>
+                  </li>
+                </ul>
+              </div>
             </div>
             <div class="post-actions">
               <button @click="deleteData(post.id)" class="delete-button">Supprimer</button>
               <button @click="modifyDocument(post)" class="modify-button">Modifier</button>
+              <button @click="toggleAttachmentFields(post.id)" class="attachment-button">
+                Attachments
+              </button>
+            </div>
+            <div v-if="showAttachmentFields[post.id]" class="attachment-fields">
+              <input type="file" multiple @change="handleMediaUpload" class="file-input" />
+              <button @click="handleMediaSubmit(post.id)" class="add-media-button">
+                Ajouter Médias
+              </button>
             </div>
           </div>
         </div>
         <div v-else class="no-posts">Aucun post disponible</div>
       </div>
 
-      <!-- Colonne de droite: Formulaire -->
       <div class="right-column">
         <div class="create-post-form">
           <h2>Créer un nouveau post</h2>
@@ -417,8 +556,8 @@ export default {
                 rows="4"
               ></textarea>
             </div>
-
             <button type="submit" class="submit-button">Créer post</button>
+            <button @click="generateDemoData" class="demo-button">Générer des données démo</button>
           </form>
         </div>
       </div>

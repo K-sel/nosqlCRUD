@@ -73,7 +73,9 @@ label {
 
 .submit-button,
 .delete-button,
-.modify-button {
+.modify-button,
+.demo-button,
+.attachment-button {
   padding: 12px 24px;
   border: none;
   border-radius: 4px;
@@ -105,8 +107,38 @@ label {
   background-color: rgb(89, 138, 229);
   color: white;
 }
+
 .modify-button:hover {
   background-color: rgb(59, 92, 152);
+}
+
+.attachment-button {
+  background-color: #28a745;
+  color: white;
+}
+
+.attachment-button:hover {
+  background-color: #218838;
+}
+
+.attachment-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.demo-button {
+  background-color: #4caf50;
+  color: white;
+}
+
+.demo-button:hover {
+  background-color: #45a049;
 }
 
 .posts-list {
@@ -148,7 +180,7 @@ label {
 
 .post-actions {
   display: flex;
-  gap: 4px;
+  gap: 8px;
   justify-content: flex-start;
 }
 
