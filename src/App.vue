@@ -69,8 +69,9 @@ export default {
     //       }
     //     })
     //     .then((result) => {
-    //       this.postsData = result.docs
+    //       this.postsData as Post [] = result.docs
     //       this.log('Search result', result)
+    //       this.fetchData()
     //     })
     //     .catch((error) => {
     //       console.error('Error searching posts', error)
