@@ -5,20 +5,24 @@ import PouchFind from 'pouchdb-find'
 
 PouchDB.plugin(PouchFind)
 
+
+declare interface RealDoc {
+  _rev?: string
+  _id?: string
+  post_name: string
+  post_content: string
+  attributes: {
+    creation_date: string
+    modified: boolean
+    modified_date?: string
+  }
+  media?: { name: string; type: string; data: string }[]
+
+}
+
 declare interface Post {
   id: string
-  doc: {
-    _rev?: string
-    _id?: string
-    post_name: string
-    post_content: string
-    attributes: {
-      creation_date: string
-      modified: boolean
-      modified_date?: string
-    }
-    media?: { name: string; type: string; data: string }[]
-  }
+  doc: RealDoc
 }
 
 export default {
@@ -140,7 +144,7 @@ export default {
         this.mediaFiles = []
       }
     },
-    createData(document: Post) {
+    createData(document: RealDoc) {
       this.log('Call createData', document)
       const db = ref(this.storage).value
       try {
@@ -188,15 +192,13 @@ export default {
         return Math.random().toString(36).substring(2) + Date.now().toString(36)
       }
 
-      const newPost: Post = {
-        doc: {
-          id: generateId(),
-          post_name: this.postName,
-          post_content: this.postContent,
-          attributes: {
-            creation_date: new Date().toISOString(),
-            modified: false
-          }
+      const newPost: RealDoc = {
+        post_name: this.postName,
+        post_content: this.postContent,
+        attributes: {
+          creation_date: new Date().toISOString(),
+          modified: false
+
         }
       }
 
@@ -226,17 +228,17 @@ export default {
       }
     },
 
-    modifyDocument(document: Post) {
+    modifyDocument(document: RealDoc) {
       this.log('Call modifyDocument', document)
 
       // Demander les nouvelles valeurs
       const newName = prompt(
         "Modifier le nom du post (laissez vide pour conserver l'ancien nom) :",
-        document.doc.doc.post_name
+        document.post_name
       )
       const newContent = prompt(
         "Modifier le contenu du post (laissez vide pour conserver l'ancien contenu) :",
-        document.doc.doc.post_content
+        document.post_content
       )
 
       // Vérifier si aucune modification n'a été apportée
@@ -247,8 +249,8 @@ export default {
 
       // Mettre à jour uniquement si des changements ont été effectués
       const hasChanged =
-        (newName && newName !== document.doc.doc.post_name) ||
-        (newContent && newContent !== document.doc.doc.post_content)
+        (newName && newName !== document.post_name) ||
+        (newContent && newContent !== document.post_content)
       if (hasChanged) {
         if (newName) {
           document.doc.doc.post_name = newName
@@ -479,13 +481,8 @@ export default {
     <div class="content-wrapper">
       <div class="left-column">
         <div class="search-section">
-          <input
-            v-model="searchQuery"
-            @input="searchPosts"
-            type="text"
-            class="search-input"
-            placeholder="Rechercher des posts..."
-          />
+          <input v-model="searchQuery" @input="searchPosts" type="text" class="search-input"
+            placeholder="Rechercher des posts..." />
         </div>
 
         <div class="posts-list" v-if="postsData.length > 0">
@@ -501,10 +498,7 @@ export default {
                 <ul>
                   <li v-for="media in post.doc.media" :key="media.name">
                     {{ media.name }}
-                    <button
-                      @click="removeMediaFromDocument(post.id, media.name)"
-                      class="delete-button"
-                    >
+                    <button @click="removeMediaFromDocument(post.id, media.name)" class="delete-button">
                       Supprimer
                     </button>
                   </li>
@@ -535,26 +529,14 @@ export default {
           <form @submit.prevent="handleSubmit" class="form">
             <div class="form-group">
               <label for="post-name">Nom du post</label>
-              <input
-                id="post-name"
-                v-model="postName"
-                type="text"
-                required
-                class="form-input"
-                placeholder="Entrez le nom du post"
-              />
+              <input id="post-name" v-model="postName" type="text" required class="form-input"
+                placeholder="Entrez le nom du post" />
             </div>
 
             <div class="form-group">
               <label for="post-content">Contenu du post</label>
-              <textarea
-                id="post-content"
-                v-model="postContent"
-                required
-                class="form-textarea"
-                placeholder="Entrez le contenu du post"
-                rows="4"
-              ></textarea>
+              <textarea id="post-content" v-model="postContent" required class="form-textarea"
+                placeholder="Entrez le contenu du post" rows="4"></textarea>
             </div>
             <button type="submit" class="submit-button">Créer post</button>
             <button @click="generateDemoData" class="demo-button">Générer des données démo</button>
