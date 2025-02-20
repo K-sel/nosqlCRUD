@@ -1,45 +1,33 @@
-# infradon2-vue
+# 🚀 Vue.js + CouchDB + PouchDB – Crash Project  
 
-This template should help get you started developing with Vue 3 in Vite.
+This project is a **hands-on experiment** to learn the fundamentals of **NoSQL databases** using **Vue.js** and **CouchDB**, with **PouchDB** as a local synchronization layer.  
 
-## Recommended IDE Setup
+## 🎯 Educational and Personal Objectives  
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+This project was **deliberately undertaken before mastering Vue.js**, following a learning-by-doing approach. The goal was to **stimulate resourcefulness**, face real-world development challenges, and learn how to research, experiment, and adapt rather than just following a theoretical approach.  
 
-## Type Support for `.vue` Imports in TS
+By getting directly “hands-on,” this project aims to:  
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+- **Learn NoSQL concepts** through CouchDB and synchronization with PouchDB.  
+- **Experiment with Vue.js in real-world conditions**, without prior academic knowledge.  
+- **Develop autonomy in solving technical problems.**  
+- **Understand how distributed and offline-first databases work.**  
 
-## Customize configuration
+## 🔧 Technologies Used  
 
-See [Vite Configuration Reference](https://vitejs.dev/config/).
+- **Vue.js** – JavaScript framework for the user interface.  
+- **CouchDB** – Document-oriented NoSQL database, designed for replication and resilience.  
+- **PouchDB** – Client-side NoSQL database enabling synchronization with CouchDB.  
 
-## Project Setup
+The application will be accessible at `http://localhost:5173/` (or another port based on your Vue configuration).  
 
-```sh
-npm install
-```
+## 🛠 CRUD Features  
 
-### Compile and Hot-Reload for Development
+The application allows performing the following **CRUD operations**:  
 
-```sh
-npm run dev
-```
+- ✅ **Create**: Add a document to the database (Vue.js form).  
+- 🔄 **Read**: Display a list of stored documents in CouchDB.  
+- ✏️ **Update**: Modify an existing document through the interface.  
+- ❌ **Delete**: Remove a document from the database.  
 
-### Type-Check, Compile and Minify for Production
-
-```sh
-npm run build
-```
-
-### Run Unit Tests with [Vitest](https://vitest.dev/)
-
-```sh
-npm run test:unit
-```
-
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
-npm run lint
-```
+Thanks to **PouchDB**, local changes are automatically **synchronized** with CouchDB whenever an internet connection is available.
