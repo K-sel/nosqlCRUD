@@ -1,4 +1,4 @@
-# 🚀 Vue.js + CouchDB + PouchDB – Crash Project  
+# Vue.js + CouchDB + PouchDB – Crash Project  
 
 This project is a **hands-on learning experience** to understand the basics of **NoSQL databases** using **Vue.js** and **CouchDB**, with **PouchDB** handling local data storage and synchronization.  
 
