@@ -80,9 +80,10 @@ export default {
     createIndex() {
       const localDB = this.localDB
       if (localDB) {
-        localDB.createIndex({
-          index: { fields: ['doc.post_name'] }
-        })
+        localDB
+          .createIndex({
+            index: { fields: ['doc.post_name'] }
+          })
           .then(() => {
             console.log('Index on post_name created successfully')
           })
@@ -307,10 +308,11 @@ export default {
       const localDB = ref(this.localDB).value
 
       if (localDB) {
-        localDB.allDocs({
-          include_docs: true,
-          attachments: true
-        })
+        localDB
+          .allDocs({
+            include_docs: true,
+            attachments: true
+          })
           .then((result: any) => {
             this.log('Structure complète allDocs:', result)
             const filteredRows = result.rows.filter((row) => !row.id.startsWith('_design/'))
@@ -328,10 +330,11 @@ export default {
       const remoteDB = ref(this.remoteDB).value
 
       if (remoteDB) {
-        remoteDB.allDocs({
-          include_docs: true,
-          attachments: true
-        })
+        remoteDB
+          .allDocs({
+            include_docs: true,
+            attachments: true
+          })
           .then((result: any) => {
             this.log('fetchDistantData result:', result)
             const filteredRows = result.rows.filter((row) => !row.id.startsWith('_design/'))
@@ -484,8 +487,13 @@ export default {
     <div class="content-wrapper">
       <div class="left-column">
         <div class="search-section">
-          <input v-model="searchQuery" @input="searchPosts" type="text" class="search-input"
-            placeholder="Rechercher des posts..." />
+          <input
+            v-model="searchQuery"
+            @input="searchPosts"
+            type="text"
+            class="search-input"
+            placeholder="Rechercher des posts..."
+          />
         </div>
 
         <div class="posts-list" v-if="postsData.length > 0">
@@ -501,7 +509,10 @@ export default {
                 <ul>
                   <li v-for="media in post.doc.media" :key="media.name">
                     {{ media.name }}
-                    <button @click="removeMediaFromDocument(post.id, media.name)" class="delete-button">
+                    <button
+                      @click="removeMediaFromDocument(post.id, media.name)"
+                      class="delete-button"
+                    >
                       Supprimer
                     </button>
                   </li>
@@ -532,14 +543,26 @@ export default {
           <form @submit.prevent="handleSubmit" class="form">
             <div class="form-group">
               <label for="post-name">Nom du post</label>
-              <input id="post-name" v-model="postName" type="text" required class="form-input"
-                placeholder="Entrez le nom du post" />
+              <input
+                id="post-name"
+                v-model="postName"
+                type="text"
+                required
+                class="form-input"
+                placeholder="Entrez le nom du post"
+              />
             </div>
 
             <div class="form-group">
               <label for="post-content">Contenu du post</label>
-              <textarea id="post-content" v-model="postContent" required class="form-textarea"
-                placeholder="Entrez le contenu du post" rows="4"></textarea>
+              <textarea
+                id="post-content"
+                v-model="postContent"
+                required
+                class="form-textarea"
+                placeholder="Entrez le contenu du post"
+                rows="4"
+              ></textarea>
             </div>
             <button type="submit" class="submit-button">Créer post</button>
             <button @click="generateDemoData" class="demo-button">Générer des données démo</button>
