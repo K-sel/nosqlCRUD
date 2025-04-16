@@ -29,7 +29,9 @@ export default {
       postsData: [] as Post[],
       searchQuery: '',
       document: null as Post | null,
-      storage: null as PouchDB.Database | null,
+      localURL: 'K-sel',
+      remoteURL: 'http://admin:admin@localhost:5984/database',
+      localDB: null as PouchDB.Database | null,
       remoteDB: null as PouchDB.Database | null,
       postName: '',
       postContent: '',
@@ -44,7 +46,7 @@ export default {
   },
 
   mounted() {
-    this.initDatabase()
+    this.initLocalDatabase()
     this.initRemoteDatabase()
     this.setupReplication()
     this.watchRemoteDatabase()
@@ -76,11 +78,12 @@ export default {
     },
 
     createIndex() {
-      const db = this.storage
-      if (db) {
-        db.createIndex({
-          index: { fields: ['doc.post_name'] }
-        })
+      const localDB = this.localDB
+      if (localDB) {
+        localDB
+          .createIndex({
+            index: { fields: ['doc.post_name'] }
+          })
           .then(() => {
             console.log('Index on post_name created successfully')
           })
@@ -91,11 +94,11 @@ export default {
     },
 
     async addMediaToDocument(postId: string, files: File[]) {
-      const db = this.storage
-      if (!db) return
+      const localDB = this.localDB
+      if (!localDB) return
 
       try {
-        const doc = await db.get(postId)
+        const doc = await localDB.get(postId)
         doc.media = doc.media || []
         for (const file of files) {
           const reader = new FileReader()
@@ -105,7 +108,7 @@ export default {
               type: file.type,
               data: e.target?.result as string
             })
-            await db.put(doc)
+            await localDB.put(doc)
             console.log(`Media added to document ${postId}`)
           }
           reader.readAsDataURL(file)
@@ -116,13 +119,13 @@ export default {
     },
 
     async removeMediaFromDocument(postId: string, mediaName: string) {
-      const db = this.storage
-      if (!db) return
+      const localDB = this.localDB
+      if (!localDB) return
 
       try {
-        const doc = await db.get(postId)
+        const doc = await localDB.get(postId)
         doc.media = doc.media?.filter((m) => m.name !== mediaName)
-        await db.put(doc)
+        await localDB.put(doc)
         console.log(`Media removed from document ${postId}`)
       } catch (err) {
         console.error('Error removing media:', err)
@@ -140,11 +143,12 @@ export default {
         this.mediaFiles = []
       }
     },
+
     createData(document: Post) {
       this.log('Call createData', document)
-      const db = ref(this.storage).value
+      const localDB = ref(this.localDB).value
       try {
-        db?.post(document)
+        localDB?.post(document)
         this.log('createData success')
       } catch (error) {
         this.log('createData error', error)
@@ -154,7 +158,7 @@ export default {
     async searchPosts() {
       this.log('Début searchPosts avec query:', this.searchQuery)
 
-      if (!this.storage || !this.searchQuery) {
+      if (!this.localDB || !this.searchQuery) {
         this.fetchData()
         return
       }
@@ -163,7 +167,7 @@ export default {
       try {
         this.log("Vérification de l'index...")
         this.log('Exécution de la recherche...')
-        const result = await this.storage.find({
+        const result = await this.localDB.find({
           selector: {
             $or: [
               {
@@ -208,17 +212,17 @@ export default {
 
     async updateData(document: Post) {
       this.log('Call updateData :', document)
-      const db = this.storage
+      const localDB = this.localDB
 
-      if (!db) {
+      if (!localDB) {
         this.log("Le stockage n'est pas défini.")
         return
       }
 
       try {
-        const existingDoc = await db.get(document.id)
+        const existingDoc = await localDB.get(document.id)
         document.doc._rev = existingDoc._rev
-        await db.put(document.doc)
+        await localDB.put(document.doc)
         this.log('updateData success')
         this.fetchData()
       } catch (error) {
@@ -270,9 +274,9 @@ export default {
 
     async deleteData(id: string) {
       this.log('Call deleteData', id)
-      const db = this.storage
+      const localDB = this.localDB
 
-      if (!db) {
+      if (!localDB) {
         this.log("Le stockage n'est pas défini.")
         return
       }
@@ -284,13 +288,13 @@ export default {
 
         this.log('Fetching document for deletion:', id)
 
-        const existingDoc = await db.get(id)
+        const existingDoc = await localDB.get(id)
 
         if (!existingDoc) {
           throw new Error(`Document avec ID ${id} introuvable.`)
         }
 
-        await db.remove(existingDoc)
+        await localDB.remove(existingDoc)
         this.log('deleteData success')
 
         this.postsData = this.postsData.filter((post) => post.id !== id)
@@ -301,58 +305,59 @@ export default {
 
     fetchData() {
       this.log('Call fetchData')
-      const db = ref(this.storage).value
-      const self = this
+      const localDB = ref(this.localDB).value
 
-      if (db) {
-        db.allDocs({
-          include_docs: true,
-          attachments: true
-        })
-          .then(function (result: any) {
-            self.log('Structure complète allDocs:', result)
-            const filteredRows = result.rows.filter((row) => !row.id.startsWith('_design/'))
-            self.log('Documents filtrés (sans index):', filteredRows)
-            self.log('fetchData success', filteredRows)
-            self.postsData = filteredRows
+      if (localDB) {
+        localDB
+          .allDocs({
+            include_docs: true,
+            attachments: true
           })
-          .catch(function (error: any) {
-            self.log('fetchData error', error)
+          .then((result: any) => {
+            this.log('Structure complète allDocs:', result)
+            const filteredRows = result.rows.filter((row) => !row.id.startsWith('_design/'))
+            this.log('fetchData success', filteredRows)
+            this.postsData = filteredRows
+          })
+          .catch((error: any) => {
+            this.log('fetchData error', error)
           })
       }
     },
+
     fetchDistantData() {
       this.log('Call fetchDistantData')
-      const db = ref(this.remoteDB).value
-      const self = this
+      const remoteDB = ref(this.remoteDB).value
 
-      if (db) {
-        db.allDocs({
-          include_docs: true,
-          attachments: true
-        })
-          .then(function (result: any) {
-            self.log('Structure distante:', result)
-            const filteredRows = result.rows.filter((row) => !row.id.startsWith('_design/'))
-            self.log('Documents filtrés (sans index):', filteredRows)
-            self.log('fetchDistantData success', filteredRows)
-            self.postsData = filteredRows
+      if (remoteDB) {
+        remoteDB
+          .allDocs({
+            include_docs: true,
+            attachments: true
           })
-          .catch(function (error: any) {
-            self.log('fetchDistantData error', error)
+          .then((result: any) => {
+            this.log('fetchDistantData result:', result)
+            const filteredRows = result.rows.filter((row) => !row.id.startsWith('_design/'))
+            this.log('fetchDistantData success', filteredRows)
+            this.postsData = filteredRows
+          })
+          .catch((error: any) => {
+            this.log('fetchDistantData error', error)
           })
       }
     },
-    initDatabase() {
-      this.log('Call initDatabase')
-      const db = new PouchDB('http://admin:admin@localhost:5984/database')
-      if (db) {
-        this.log('Connected to collection ', db.name)
-        db.createIndex({
-          index: {
-            fields: ['post_name']
-          }
-        })
+
+    initLocalDatabase() {
+      this.log('Call initLocalDatabase')
+      const localDB = new PouchDB(this.localURL)
+      if (localDB) {
+        this.log('Connected to collection ', localDB.name)
+        localDB
+          .createIndex({
+            index: {
+              fields: ['post_name']
+            }
+          })
           .then(() => {
             this.log('Index créé avec succès')
           })
@@ -362,12 +367,12 @@ export default {
       } else {
         this.log('Something went wrong')
       }
-      this.storage = db
+      this.localDB = localDB
     },
 
     initRemoteDatabase() {
-      this.log('Call initDatabase')
-      const remoteDB = new PouchDB('http://admin:admin@localhost:5984/database')
+      this.log('Call initRemoteDatabase')
+      const remoteDB = new PouchDB(this.remoteURL)
       if (remoteDB) {
         this.log('Connected to collection ', remoteDB.name)
       } else {
@@ -382,9 +387,9 @@ export default {
     },
 
     updateLocalDatabase() {
-      const db = ref(this.storage).value
-      if (db) {
-        db.replicate.from
+      const localDB = ref(this.localDB).value
+      if (localDB) {
+        localDB.replicate.from
           .bind(this)(this.remoteDB!)
           .on('complete', () => {
             console.log('on replicate complete')
@@ -400,7 +405,7 @@ export default {
       const remotDb = ref(this.remoteDB).value
       if (remotDb) {
         remotDb.replicate.from
-          .bind(this)(this.storage!)
+          .bind(this)(this.localDB!)
           .on('complete', () => {
             console.log('on replicate complete')
             this.fetchData()
@@ -412,12 +417,12 @@ export default {
     },
 
     async addAttachment(postId: string, file: File) {
-      const db = this.storage
-      if (!db) return
+      const localDB = this.localDB
+      if (!localDB) return
 
       try {
-        const doc = await db.get(postId)
-        const result = await db.putAttachment(postId, file.name, doc._rev, file, file.type)
+        const doc = await localDB.get(postId)
+        const result = await localDB.putAttachment(postId, file.name, doc._rev, file, file.type)
         console.log('Attachment added', result)
       } catch (error) {
         console.error('Attachment error', error)
@@ -425,10 +430,10 @@ export default {
     },
 
     setupReplication() {
-      if (!this.storage || !this.remoteDB) return
-
+      if (!this.localDB || !this.remoteDB) return
+      this.log('setupReplication')
       this.remoteDB.replicate
-        .to(this.storage, {
+        .to(this.localDB, {
           live: true,
           retry: true
         })
@@ -439,8 +444,11 @@ export default {
         .on('error', (err) => {
           console.error('Replication error', err)
         })
+        .on('complete', (complete) => {
+          console.log('on Complete', complete)
+        })
 
-      this.storage.replicate
+      this.localDB.replicate
         .to(this.remoteDB, {
           live: true,
           retry: true
